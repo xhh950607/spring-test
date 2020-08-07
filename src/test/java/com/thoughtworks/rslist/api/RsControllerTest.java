@@ -195,4 +195,28 @@ class RsControllerTest {
         assertEquals(voteDtos.size(), 1);
         assertEquals(voteDtos.get(0).getNum(), 1);
     }
+
+    @Test
+    public void shouldBuySuccessWhenNoBidding() throws Exception {
+        userDto = userRepository.save(userDto);
+        RsEventDto rsEventDto = RsEventDto.builder()
+                .eventName("event name")
+                .keyword("keyword")
+                .voteNum(0)
+                .user(userDto)
+                .build();
+        rsEventDto = rsEventRepository.save(rsEventDto);
+        Trade trade = new Trade(100, 1);
+        String postBody = "{\"amount\":100,\"rank\":1}";
+        mockMvc.perform(post("/rs/buy/" + rsEventDto.getId())
+                .content(postBody)
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk());
+        List<TradeDto> tradeDtos = tradeRepository.findAll();
+        assertEquals(1,tradeDtos.size());
+        TradeDto tradeDto = tradeDtos.get(0);
+        assertEquals(trade.getAmount(),tradeDto.getAmount());
+        assertEquals(trade.getRank(),tradeDto.getRank());
+        assertEquals(rsEventDto.getId(),tradeDto.getRsEventDto().getId());
+    }
 }
