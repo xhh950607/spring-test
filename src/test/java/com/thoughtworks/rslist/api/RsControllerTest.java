@@ -206,7 +206,6 @@ class RsControllerTest {
                 .user(userDto)
                 .build();
         rsEventDto = rsEventRepository.save(rsEventDto);
-        Trade trade = new Trade(100, 1);
         String postBody = "{\"amount\":100,\"rank\":1}";
         mockMvc.perform(post("/rs/buy/" + rsEventDto.getId())
                 .content(postBody)
@@ -215,8 +214,32 @@ class RsControllerTest {
         List<TradeDto> tradeDtos = tradeRepository.findAll();
         assertEquals(1,tradeDtos.size());
         TradeDto tradeDto = tradeDtos.get(0);
-        assertEquals(trade.getAmount(),tradeDto.getAmount());
-        assertEquals(trade.getRank(),tradeDto.getRank());
+        assertEquals(100,tradeDto.getAmount());
+        assertEquals(1,tradeDto.getRank());
         assertEquals(rsEventDto.getId(),tradeDto.getRsEventDto().getId());
+    }
+
+    @Test
+    public void shouldBadRequestWhenAmountLess() throws Exception {
+        userDto = userRepository.save(userDto);
+        RsEventDto rsEventDto = RsEventDto.builder()
+                .eventName("event old")
+                .keyword("keyword")
+                .voteNum(0)
+                .user(userDto)
+                .build();
+        rsEventDto = rsEventRepository.save(rsEventDto);
+        TradeDto tradeDto = TradeDto.builder()
+                .amount(200)
+                .rank(1)
+                .rsEventDto(rsEventDto)
+                .build();
+        tradeRepository.save(tradeDto);
+
+        String postBody = "{\"amount\":100,\"rank\":1}";
+        mockMvc.perform(post("/rs/buy/" + rsEventDto.getId())
+                .content(postBody)
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isBadRequest());
     }
 }
