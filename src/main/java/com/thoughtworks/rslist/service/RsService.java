@@ -6,6 +6,7 @@ import com.thoughtworks.rslist.dto.RsEventDto;
 import com.thoughtworks.rslist.dto.TradeDto;
 import com.thoughtworks.rslist.dto.UserDto;
 import com.thoughtworks.rslist.dto.VoteDto;
+import com.thoughtworks.rslist.exception.BuyFailedException;
 import com.thoughtworks.rslist.repository.RsEventRepository;
 import com.thoughtworks.rslist.repository.TradeRepository;
 import com.thoughtworks.rslist.repository.UserRepository;
@@ -56,6 +57,9 @@ public class RsService {
     }
 
     public void buy(Trade trade, int id) {
+        TradeDto competitor = tradeRePository.findByRank(trade.getRank());
+        if (competitor != null && competitor.getAmount() >= trade.getAmount())
+            throw new BuyFailedException();
         RsEventDto rsEventDto = rsEventRepository.findById(id).get();
         TradeDto tradeDto = TradeDto.builder()
                 .amount(trade.getAmount())

@@ -6,6 +6,7 @@ import com.thoughtworks.rslist.dto.RsEventDto;
 import com.thoughtworks.rslist.dto.TradeDto;
 import com.thoughtworks.rslist.dto.UserDto;
 import com.thoughtworks.rslist.dto.VoteDto;
+import com.thoughtworks.rslist.exception.BuyFailedException;
 import com.thoughtworks.rslist.repository.RsEventRepository;
 import com.thoughtworks.rslist.repository.TradeRepository;
 import com.thoughtworks.rslist.repository.UserRepository;
@@ -122,5 +123,21 @@ class RsServiceTest {
                         .rank(rank)
                         .rsEventDto(rsEventDto)
                         .build());
+    }
+
+    @Test
+    void shouldThrowBuyFailedExceptionWhenAmountLess() {
+        //given
+        int rank = 1;
+        TradeDto tradeDto = TradeDto.builder()
+                .amount(100)
+                .rank(rank)
+                .rsEventDto(new RsEventDto())
+                .build();
+        when(tradeRepository.findByRank(rank)).thenReturn(tradeDto);
+        when(rsEventRepository.findById(anyInt())).thenReturn(Optional.of(new RsEventDto()));
+        Trade trade = new Trade(10, rank);
+        //when & then
+        assertThrows(BuyFailedException.class, () -> rsService.buy(trade, 1));
     }
 }
