@@ -20,16 +20,16 @@ public class RsService {
     final RsEventRepository rsEventRepository;
     final UserRepository userRepository;
     final VoteRepository voteRepository;
-    final TradeRepository tradeRePository;
+    final TradeRepository tradeRepository;
 
     public RsService(RsEventRepository rsEventRepository,
                      UserRepository userRepository,
                      VoteRepository voteRepository,
-                     TradeRepository tradeRePository) {
+                     TradeRepository tradeRepository) {
         this.rsEventRepository = rsEventRepository;
         this.userRepository = userRepository;
         this.voteRepository = voteRepository;
-        this.tradeRePository = tradeRePository;
+        this.tradeRepository = tradeRepository;
     }
 
     public void vote(Vote vote, int rsEventId) {
@@ -57,15 +57,20 @@ public class RsService {
     }
 
     public void buy(Trade trade, int id) {
-        TradeDto competitor = tradeRePository.findByRank(trade.getRank());
-        if (competitor != null && competitor.getAmount() >= trade.getAmount())
-            throw new BuyFailedException();
+        Optional<TradeDto> oldTradeOptional = tradeRepository.findByRank(trade.getRank());
+        if (oldTradeOptional.isPresent()) {
+            TradeDto oldTrade = oldTradeOptional.get();
+            if (oldTrade.getAmount() >= trade.getAmount())
+                throw new BuyFailedException();
+            else
+                rsEventRepository.delete(oldTrade.getRsEventDto());
+        }
         RsEventDto rsEventDto = rsEventRepository.findById(id).get();
-        TradeDto tradeDto = TradeDto.builder()
+        tradeRepository.save(TradeDto.builder()
                 .amount(trade.getAmount())
                 .rank(trade.getRank())
                 .rsEventDto(rsEventDto)
-                .build();
-        tradeRePository.save(tradeDto);
+                .build());
+
     }
 }

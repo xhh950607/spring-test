@@ -110,7 +110,7 @@ class RsServiceTest {
                 .id(rsEventId)
                 .build();
         when(rsEventRepository.findById(rsEventId)).thenReturn(Optional.of(rsEventDto));
-        when(tradeRepository.findByRank(rank)).thenReturn(null);
+        when(tradeRepository.findByRank(rank)).thenReturn(Optional.empty());
         Trade trade = new Trade(amount, rank);
 
         //when
@@ -134,10 +134,36 @@ class RsServiceTest {
                 .rank(rank)
                 .rsEventDto(new RsEventDto())
                 .build();
-        when(tradeRepository.findByRank(rank)).thenReturn(tradeDto);
+        when(tradeRepository.findByRank(rank)).thenReturn(Optional.of(tradeDto));
         when(rsEventRepository.findById(anyInt())).thenReturn(Optional.of(new RsEventDto()));
         Trade trade = new Trade(10, rank);
         //when & then
         assertThrows(BuyFailedException.class, () -> rsService.buy(trade, 1));
+    }
+
+    @Test
+    void shouldReplaceCompetitorWhenAmountMore() {
+        //given
+        int rank = 1;
+        RsEventDto oldRsEvent = RsEventDto.builder().id(1).build();
+        TradeDto tradeDto = TradeDto.builder()
+                .amount(10)
+                .rank(rank)
+                .rsEventDto(oldRsEvent)
+                .build();
+        RsEventDto newRsEvent = RsEventDto.builder().id(2).build();
+        when(tradeRepository.findByRank(rank)).thenReturn(Optional.of(tradeDto));
+        when(rsEventRepository.findById(newRsEvent.getId())).thenReturn(Optional.of(newRsEvent));
+        Trade trade = new Trade(100, rank);
+        //when
+        rsService.buy(trade, newRsEvent.getId());
+        //then
+        verify(rsEventRepository).delete(oldRsEvent);
+        verify(tradeRepository)
+                .save(TradeDto.builder()
+                        .amount(100)
+                        .rank(rank)
+                        .rsEventDto(newRsEvent)
+                        .build());
     }
 }

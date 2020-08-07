@@ -6,7 +6,6 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import javax.persistence.*;
-import javax.validation.constraints.NotNull;
 
 @Entity
 @Table(name = "trade")
@@ -20,10 +19,9 @@ public class TradeDto {
     @GeneratedValue
     private int id;
     private int amount;
+    @Column(unique = true)
     private int rank;
-    @ManyToOne
-    @JoinColumn(name="rs_event_id")
+    @OneToOne
+    @JoinColumn(name = "rs_event_id")
     private RsEventDto rsEventDto;
-
-
 }
