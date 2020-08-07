@@ -20,10 +20,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.time.LocalDateTime;
 import java.util.List;
 
-import static org.hamcrest.Matchers.hasKey;
-import static org.hamcrest.Matchers.hasSize;
-import static org.hamcrest.Matchers.is;
-import static org.hamcrest.Matchers.not;
+import static org.hamcrest.Matchers.*;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -275,5 +272,37 @@ class RsControllerTest {
         tradeDto = tradeRepository.findByRank(1).get();
         assertEquals(200, tradeDto.getAmount());
         assertEquals(rsEventDto.getId(), tradeDto.getRsEventDto().getId());
+    }
+
+    @Test
+    public void shouldGetRsListAfterTrade() throws Exception {
+        userRepository.save(userDto);
+        rsEventRepository.save(RsEventDto.builder()
+                .eventName("event 1 with vote 2")
+                .voteNum(2)
+                .user(userDto)
+                .build());
+        rsEventRepository.save(RsEventDto.builder()
+                .eventName("event 2 with vote 3")
+                .voteNum(3)
+                .user(userDto)
+                .build());
+        RsEventDto rsEventDto = rsEventRepository.save(RsEventDto.builder()
+                .eventName("event 3 with vote 0")
+                .voteNum(0)
+                .user(userDto)
+                .build());
+
+        String postBody = "{\"amount\":200,\"rank\":1}";
+        mockMvc.perform(post("/rs/buy/" + rsEventDto.getId())
+                .content(postBody)
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk());
+        mockMvc.perform(get("/rs/list"))
+                .andExpect(jsonPath("$[0].eventName").value("event 3 with vote 0"))
+                .andExpect(jsonPath("$[1].eventName").value("event 2 with vote 3"))
+                .andExpect(jsonPath("$[2].eventName").value("event 1 with vote 2"))
+                .andExpect(status().isOk());
+
     }
 }

@@ -4,11 +4,13 @@ import com.thoughtworks.rslist.domain.RsEvent;
 import com.thoughtworks.rslist.domain.Trade;
 import com.thoughtworks.rslist.domain.Vote;
 import com.thoughtworks.rslist.dto.RsEventDto;
+import com.thoughtworks.rslist.dto.TradeDto;
 import com.thoughtworks.rslist.dto.UserDto;
 import com.thoughtworks.rslist.exception.BuyFailedException;
 import com.thoughtworks.rslist.exception.Error;
 import com.thoughtworks.rslist.exception.RequestNotValidException;
 import com.thoughtworks.rslist.repository.RsEventRepository;
+import com.thoughtworks.rslist.repository.TradeRepository;
 import com.thoughtworks.rslist.repository.UserRepository;
 import com.thoughtworks.rslist.service.RsService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,8 +25,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import javax.validation.Valid;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @RestController
@@ -35,22 +36,54 @@ public class RsController {
     @Autowired
     UserRepository userRepository;
     @Autowired
+    TradeRepository tradeRepository;
+    @Autowired
     RsService rsService;
 
     @GetMapping("/rs/list")
     public ResponseEntity<List<RsEvent>> getRsEventListBetween(
             @RequestParam(required = false) Integer start, @RequestParam(required = false) Integer end) {
-        List<RsEvent> rsEvents =
-                rsEventRepository.findAll().stream()
-                        .map(
-                                item ->
-                                        RsEvent.builder()
-                                                .eventName(item.getEventName())
-                                                .keyword(item.getKeyword())
-                                                .userId(item.getId())
-                                                .voteNum(item.getVoteNum())
-                                                .build())
-                        .collect(Collectors.toList());
+        List<RsEventDto> rsEventDtos = rsEventRepository.findAll();
+        List<RsEvent> rsEvents = new ArrayList<>();
+        for(int i=0;i<rsEventDtos.size();i++){
+            rsEvents.add(null);
+        }
+
+        List<TradeDto> tradeDtos = tradeRepository.findAll();
+        List<Integer> tradeRsEventIds = tradeDtos.stream()
+                .map(tradeDto -> tradeDto.getRsEventDto().getId())
+                .collect(Collectors.toList());
+
+        rsEventDtos = rsEventDtos.stream()
+                .filter(rsEventDto -> !tradeRsEventIds.contains(rsEventDto.getId()))
+                .sorted(Comparator.comparing(RsEventDto::getVoteNum).reversed())
+                .collect(Collectors.toList());
+        Iterator<RsEventDto> rsEventDtoIterator = rsEventDtos.iterator();
+
+        for (TradeDto tradeDto : tradeDtos) {
+            RsEventDto rsEventDto = tradeDto.getRsEventDto();
+            RsEvent rsEvent = RsEvent.builder()
+                    .eventName(rsEventDto.getEventName())
+                    .keyword(rsEventDto.getKeyword())
+                    .voteNum(rsEventDto.getVoteNum())
+                    .userId(rsEventDto.getUser().getId())
+                    .build();
+            rsEvents.set(tradeDto.getRank() - 1, rsEvent);
+        }
+
+        for(int i=0;i<rsEvents.size();i++){
+            if(rsEvents.get(i)==null){
+                RsEventDto rsEventDto = rsEventDtoIterator.next();
+                RsEvent rsEvent = RsEvent.builder()
+                        .eventName(rsEventDto.getEventName())
+                        .keyword(rsEventDto.getKeyword())
+                        .voteNum(rsEventDto.getVoteNum())
+                        .userId(rsEventDto.getUser().getId())
+                        .build();
+                rsEvents.set(i, rsEvent);
+            }
+        }
+
         if (start == null || end == null) {
             return ResponseEntity.ok(rsEvents);
         }
