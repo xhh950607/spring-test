@@ -303,6 +303,5 @@ class RsControllerTest {
                 .andExpect(jsonPath("$[1].eventName").value("event 2 with vote 3"))
                 .andExpect(jsonPath("$[2].eventName").value("event 1 with vote 2"))
                 .andExpect(status().isOk());
-
     }
 }

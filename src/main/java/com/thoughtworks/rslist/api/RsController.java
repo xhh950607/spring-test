@@ -43,44 +43,28 @@ public class RsController {
     @GetMapping("/rs/list")
     public ResponseEntity<List<RsEvent>> getRsEventListBetween(
             @RequestParam(required = false) Integer start, @RequestParam(required = false) Integer end) {
+
         List<RsEventDto> rsEventDtos = rsEventRepository.findAll();
         List<RsEvent> rsEvents = new ArrayList<>();
-        for(int i=0;i<rsEventDtos.size();i++){
+        for (int i = 0; i < rsEventDtos.size(); i++) {
             rsEvents.add(null);
         }
 
         List<TradeDto> tradeDtos = tradeRepository.findAll();
-        List<Integer> tradeRsEventIds = tradeDtos.stream()
-                .map(tradeDto -> tradeDto.getRsEventDto().getId())
-                .collect(Collectors.toList());
+        tradeDtos.forEach(tradeDto ->
+                rsEvents.set(tradeDto.getRank() - 1, transform(tradeDto.getRsEventDto())));
 
-        rsEventDtos = rsEventDtos.stream()
-                .filter(rsEventDto -> !tradeRsEventIds.contains(rsEventDto.getId()))
+        Iterator<RsEvent> rsEventIterator = rsEventDtos.stream()
+                .filter(rsEventDto -> tradeDtos.stream()
+                        .noneMatch(tradeDto -> tradeDto.getRsEventDto().getId() == rsEventDto.getId()))
                 .sorted(Comparator.comparing(RsEventDto::getVoteNum).reversed())
-                .collect(Collectors.toList());
-        Iterator<RsEventDto> rsEventDtoIterator = rsEventDtos.iterator();
+                .map(this::transform)
+                .collect(Collectors.toList())
+                .iterator();
 
-        for (TradeDto tradeDto : tradeDtos) {
-            RsEventDto rsEventDto = tradeDto.getRsEventDto();
-            RsEvent rsEvent = RsEvent.builder()
-                    .eventName(rsEventDto.getEventName())
-                    .keyword(rsEventDto.getKeyword())
-                    .voteNum(rsEventDto.getVoteNum())
-                    .userId(rsEventDto.getUser().getId())
-                    .build();
-            rsEvents.set(tradeDto.getRank() - 1, rsEvent);
-        }
-
-        for(int i=0;i<rsEvents.size();i++){
-            if(rsEvents.get(i)==null){
-                RsEventDto rsEventDto = rsEventDtoIterator.next();
-                RsEvent rsEvent = RsEvent.builder()
-                        .eventName(rsEventDto.getEventName())
-                        .keyword(rsEventDto.getKeyword())
-                        .voteNum(rsEventDto.getVoteNum())
-                        .userId(rsEventDto.getUser().getId())
-                        .build();
-                rsEvents.set(i, rsEvent);
+        for (int i = 0; i < rsEvents.size(); i++) {
+            if (rsEvents.get(i) == null) {
+                rsEvents.set(i, rsEventIterator.next());
             }
         }
 
@@ -88,6 +72,15 @@ public class RsController {
             return ResponseEntity.ok(rsEvents);
         }
         return ResponseEntity.ok(rsEvents.subList(start - 1, end));
+    }
+
+    private RsEvent transform(RsEventDto rsEventDto) {
+        return RsEvent.builder()
+                .eventName(rsEventDto.getEventName())
+                .keyword(rsEventDto.getKeyword())
+                .voteNum(rsEventDto.getVoteNum())
+                .userId(rsEventDto.getUser().getId())
+                .build();
     }
 
     @GetMapping("/rs/{index}")
